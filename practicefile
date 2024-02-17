@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/neeraj785/Valentine-Day-DevOps-Project.git'
+            }
+        }
+        stage('Trivy FileSystem Scan') {
+            steps {
+                sh "trivy fs --format table -o trivy-fs-report.html ."
+            }
+        }
+        stage('Build & Tag Docker Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
+                        sh "docker build -t neeraj005/valentine:v1 ."
+                    }
+                }
+            }
+        }
+        stage('Trivy Image Scan') {
+            steps {
+                sh "trivy image --format json -o trivy-image-report.json neeraj005/valentine:v1"
+            }
+        }
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
+                        sh "docker push neeraj005/valentine:v1"
+                    }
+                }
+            }
+        }
+        stage('Deploy to Container') {
+            steps {
+                sh "docker run -d -p 8081:80 neeraj005/valentine:v1"
+            }
+        }
+    }
+}
